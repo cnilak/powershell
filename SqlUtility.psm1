@@ -470,11 +470,21 @@ function Get-SQLWhoIsActive ([Parameter(Mandatory=$True)][string]$dbServer) {
     #db file usage across dbs
     Invoke-Sqlcmd -ServerInstance $dbServer -InputFile '\\svr-sndbx08\DBAScripts\Chita\sqlLib\who_is_active' -Verbose 4>&1 
 }
-function Get-SQLAvgInfo ([Parameter(Mandatory=$True)][string]$dbServer) {
-    Invoke-Sqlcmd -ServerInstance $dbServer -InputFile '\\svr-sndbx08\DBAScripts\Chita\sqlLib\GetAVGInfo.sql' -Verbose 4>&1 
+function Get-SQLAvgInfo ([Parameter(Mandatory=$True)][string]$dbServer, [ValidateSet("shacklePROD","shackleDEV")][string]$shackleEnv) {
+    if($shackleEnv) {
+        Invoke-Sqlcmd -ServerInstance $dbServer -InputFile '\\svr-sndbx08\DBAScripts\Chita\sqlLib\GetAVGInfo.sql' -Username shackle -Password (Get-SqlPlainPassword -pwdFile $shackleEnv) -Verbose 4>&1 
+    }
+    else {
+        Invoke-Sqlcmd -ServerInstance $dbServer -InputFile '\\svr-sndbx08\DBAScripts\Chita\sqlLib\GetAVGInfo.sql' -Verbose 4>&1 
+    }
 }
-function Get-SQLReplicaInfo ([Parameter(Mandatory=$True)][string]$dbServer) {
-    Invoke-Sqlcmd -ServerInstance $dbServer -Query "select * from sys.availability_replicas" -Verbose 4>&1 
+function Get-SQLReplicaInfo ([Parameter(Mandatory=$True)][string]$dbServer, [ValidateSet("shacklePROD","shackleDEV")][string]$shackleEnv) {
+    if($shackleEnv) {
+        Invoke-Sqlcmd -ServerInstance $dbServer -Query "select * from sys.availability_replicas" -Username shackle -Password (Get-SqlPlainPassword -pwdFile $shackleEnv) -Verbose 4>&1 
+    }
+    else {
+        Invoke-Sqlcmd -ServerInstance $dbServer -Query "select * from sys.availability_replicas" -Verbose 4>&1 
+    }    
 }
 
 function Get-SQLDatbaseInfo ([Parameter(Mandatory=$True)][string]$dbName) {
@@ -687,10 +697,10 @@ function Restore-TSMSQLDatabase_bak ([Parameter(Mandatory=$True)][string]$dbServ
     }
 }
 
-function Add-SQLTDECertificateOnReplica ([Parameter(Mandatory=$True)][string]$dbCertServer,[Parameter(Mandatory=$True)][string]$dbReplicaServer, [Parameter(Mandatory=$True)][string]$decryPwd) {
+function Add-SQLTDECertificateOnReplica ([Parameter(Mandatory=$True)][string]$dbCertServer,[Parameter(Mandatory=$True)][string]$dbReplicaServer, [Parameter(Mandatory=$True)][string]$decryPwd, [Parameter(Mandatory=$True)][ValidateSet("shacklePROD","shackleDEV")][string]$shackleEnv) {
 
     #check if the certificate not already exist
-    $oldTDECert = (Invoke-Sqlcmd -ServerInstance $dbCertServer -Query "select * from sys.certificates where name = '$($dbReplicaServer)_TDE'"  -Verbose 4>&1).name 
+    $oldTDECert = (Invoke-Sqlcmd -ServerInstance $dbCertServer -Query "select * from sys.certificates where name = '$($dbReplicaServer)_TDE'" -Username "shackle" -Password (Get-SqlPlainPassword -pwdFile $shackleEnv).Trim()  -Verbose 4>&1).name 
     if($oldTDECert -ne $null) {
         Write-Verbose "A TDE Certificate:$oldTDECert already exist on $dbCertServer"
     }
@@ -719,17 +729,17 @@ function Add-SQLTDECertificateOnReplica ([Parameter(Mandatory=$True)][string]$db
             GO
         "
         Write-Verbose $query3
-        Invoke-Sqlcmd -ServerInstance $dbCertServer -Query $query3  -Verbose 4>&1 
+        Invoke-Sqlcmd -ServerInstance $dbCertServer -Query $query3 -Username "shackle" -Password (Get-SqlPlainPassword -pwdFile $shackleEnv).Trim() -Verbose 4>&1 
     
-        $newTDECert = (Invoke-Sqlcmd -ServerInstance $dbCertServer -Query "select * from sys.certificates where name = '$($dbReplicaServer)_TDE'" -Verbose 4>&1).name 
+        $newTDECert = (Invoke-Sqlcmd -ServerInstance $dbCertServer -Query "select * from sys.certificates where name = '$($dbReplicaServer)_TDE'" -Username "shackle" -Password (Get-SqlPlainPassword -pwdFile $shackleEnv).Trim() -Verbose 4>&1).name 
         Write-Verbose "A new TDE Certificate:$newTDECert has been successfully created on $dbCertServer"
     }
 }
 
 
-function Add-SQLTDECertificate ([parameter(Mandatory=$True)][string]$dbCertServer, [parameter(Mandatory=$True)][string]$decryPwd) {
+function Add-SQLTDECertificate ([parameter(Mandatory=$True)][string]$dbCertServer, [parameter(Mandatory=$True)][string]$decryPwd, [Parameter(Mandatory=$True)][ValidateSet("shacklePROD","shackleDEV")][string]$shackleEnv) {
     #check if the certificate not already exist
-    $oldTDECert = (Invoke-Sqlcmd -ServerInstance $dbCertServer -Query "select * from sys.certificates where name = '$($dbCertServer)_TDE'" -Verbose 4>&1).name 
+    $oldTDECert = (Invoke-Sqlcmd -ServerInstance $dbCertServer -Query "select * from sys.certificates where name = '$($dbCertServer)_TDE'" -Username "shackle" -Password (Get-SqlPlainPassword -pwdFile $shackleEnv).Trim() -Verbose 4>&1).name 
     if($oldTDECert -ne $null) {
         Write-Verbose "A TDE Certificate:$oldTDECert already exist on $dbCertServer"
     }
@@ -758,9 +768,9 @@ function Add-SQLTDECertificate ([parameter(Mandatory=$True)][string]$dbCertServe
             GO
         "
         Write-Verbose $query3
-        Invoke-Sqlcmd -ServerInstance $dbCertServer -Query $query3 -Verbose 4>&1 
+        Invoke-Sqlcmd -ServerInstance $dbCertServer -Query $query3 -Username "shackle" -Password (Get-SqlPlainPassword -pwdFile $shackleEnv).Trim() -Verbose 4>&1 
     
-        $newTDECert = (Invoke-Sqlcmd -ServerInstance $dbCertServer -Query "select * from sys.certificates where name = '$($dbCertServer)_TDE'" -Verbose 4>&1).name 
+        $newTDECert = (Invoke-Sqlcmd -ServerInstance $dbCertServer -Query "select * from sys.certificates where name = '$($dbCertServer)_TDE'" -Username "shackle" -Password (Get-SqlPlainPassword -pwdFile $shackleEnv).Trim() -Verbose 4>&1).name 
         Write-Verbose "A new TDE Certificate:$newTDECert has been successfully created on $dbCertServer"
     }
 }
@@ -859,105 +869,7 @@ function Get-SqlSecurePassword ([ValidateSet('HQSQLSvc_NFCUTEST','shackleDEV','s
 }
 
 
-function Install-SqlTDECertificate_BAK ([parameter (Mandatory=$True)][string]$dbCertServer, [parameter (Mandatory=$True)][string]$certPlainPwd, [switch]$restartSQLService, [switch]$encryptUserDBs) {
-
-    if($dbCertServer -eq $null) {
-        $dbCertServer = $env:COMPUTERNAME    
-    }
-    $certSecPwd = ConvertTo-SecureString ($certPlainPwd) -AsPlainText -Force -Verbose
-
-    #Step0: Check if the certificate already exist on the server 
-    $dbCertificate = Invoke-Command -ComputerName $dbCertServer -ScriptBlock {
-        (Get-ChildItem Cert:\LocalMachine\My -Verbose) 
-    }
-    if ($dbCertificate -eq $null) {
-        Write-Host No certificate is installed on the server: $dbCertServer -ForegroundColor Yellow
-    }
-    else {
-        $oldCert = $dbCertificate
-        $dbCertificate = $null
-    }
-    #Step: Check if the pfx file exist on the DBA box for that server.
-    $pfxFile = ''
-    $certFiles = ''
-    Get-ChildItem \\SWVDCLVSNDBDB01\j$\software\SSLCert\ | ? {$_.Name -match $dbCertServer} | % {
-        $pfxFile = $_.GetFiles() | ? {$_.Name -match "$($dbCertServer).nfcu.net.pfx"}
-        $certFiles = $_.GetFiles() | ? {$_.Name -cmatch ".cer"}
-    }
-    #Step: Run the PVK converter to create cert file and pvk file.
-    if($certFiles -eq $null) {
-       Invoke-Command -ComputerName SWVDCLVSNDBDB01 -ScriptBlock {
-          Invoke-Expression "& `"J:\Program Files (x86)\Microsoft\PVKConverter\PVKConverter.exe`" -i j:\software\SSLCert\$Using:dbCertServer\$Using:dbCertServer.nfcu.net -o J:\software\SSLCert\$Using:dbCertServer\$Using:dbCertServer -d $Using:certPlainPwd -e $Using:certPlainPwd" -Verbose
-       } -Verbose    
-    }
-    $certFile = Get-ChildItem \\SWVDCLVSNDBDB01\j$\software\SSLCert\$dbCertServer\ | ? {$_.Name -match 'cer'} | ? {$_.Mode -match 'a'}
-    $pvkFile = Get-ChildItem \\SWVDCLVSNDBDB01\j$\software\SSLCert\$dbCertServer\ | ? {$_.Name -match 'pvk'} | ? {$_.Mode -match 'a'}
-    Write-Host $certFile',' $pvkFile files have been created/exist -ForegroundColor Green
-
-    #Step: Import or overwrite certificate on the server My folder if it does not exist
-
-    #run ouput of below command on the certificate server
-    if($oldCert -eq $null) {      
-       #Invoke-Command  -ComputerName $dbCertServer -Authentication Credssp -Credential (Get-Credential -Message RemoteServerAdmin) -ScriptBlock {
-         Import-PfxCertificate -FilePath $($pfxFile.FullName) -Password $certSecPwd -CertStoreLocation Cert:\LocalMachine\My -Exportable -Verbose 
-       #} -EnableNetworkAccess
-    }
-
-    #Step: Get the certificate from the local server
-    $newCert = Get-ChildItem Cert:\LocalMachine\My | Select-Object -First 1             
-
-    #Step: Check if SQL certificate is already instaleld on the server.
-    $oldSqlCert = get-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Microsoft SQL Server\*\MSSQLServer\SuperSocketNetLib" -Name "Certificate"  -Verbose
-
-    $setNewCert = $True
-    if($oldSqlCert -ne $null) {
-        if($oldSqlCert.Certificate -eq $newCert.Thumbprint) {
-           Write-host  CERT: $oldSqlCert.Certificate already exist on SQL Server:$dbCertServer -ForegroundColor Yellow
-           $setNewCert = $false
-        }
-    }
-    if($setNewCert = $True) {
-        #Step: Load the certificate on the SQL server
-        $certificateObject = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2
-        $PfxPath = "\\SWVDCLVSNDBDB01\j$\software\SSLCert\$dbCertServer\$pfxFile"
-        $certificateObject.Import($PfxPath, $certSecPwd , [System.Security.Cryptography.X509Certificates.X509KeyStorageFlags]::DefaultKeySet)
-
-        Set-ItemProperty -Path $(get-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Microsoft SQL Server\*\MSSQLServer\SuperSocketNetLib").PsPath -Name "Certificate" -Type String -Value "$($certificateObject.Thumbprint)" -Verbose
-
-        #Step: Restart SQL Service
-        if($restartSQLService) {
-            Restart-SQLService -dbServer $dbCertServer
-        }
-
-        #Step: Check error log file
-        #Get-SqlErrorLog  -ServerInstance $dbCertServer  -Since Midnight -Verbose | ? {$_.Text -match 'encryption'}
-    }
-
-    #######################################################
-    #                 ENABLE TDE                          # 
-    #######################################################    
-    New-SQLMasterKey -dbCertServer $dbCertServer -certPlainPwd $certPlainPwd
-    #Check if the server is part of an AVG group, if yes! then replicate the certificate (TDE only) on other replicas before encrypting any database.
-    Add-SQLTDECertificate -dbCertServer $dbCertServer -decryPwd $certPlainPwd
-
-    $otherReplica = Get-SQLAvgInfo -dbServer $dbCertServer | ? {$_.Replicas -notmatch $dbCertServer} | Select-Object -Property Replicas
-    if($otherReplica -ne $null) {
-        #import TDE certificate on the other replica node
-        $otherReplica | % {        
-            New-SQLMasterKey -dbCertServer ($_.Replicas) -certPlainPwd $certPlainPwd
-            Add-SQLTDECertificateOnReplica -dbCertServer ($_.Replicas) -dbReplicaServer $dbCertServer -decryPwd $certPlainPwd  
-            #Add-SQLTDECertificate -dbCertServer ($_.Replicas) -decryPwd $certPlainPwd
-        }
-    }
-    
-    #get list of user databases
-    if($encryptUserDBs) {
-        Enable-TDEOnUserDatabases -dbCertServer $dbCertServer
-    }
-
-}
-
-function Install-SqlTDECertificate ([parameter (Mandatory=$True)][string]$dbCertServer, [parameter (Mandatory=$True)][string]$certPlainPwd, [switch]$restartSQLService, [switch]$encryptUserDBs) {
+function Install-SqlTDECertificate ([parameter (Mandatory=$True)][string]$dbCertServer, [parameter (Mandatory=$True)][string]$certPlainPwd, [Parameter(Mandatory=$True)][ValidateSet("shacklePROD","shackleDEV")][string]$shackleEnv, [switch]$restartSQLService, [switch]$encryptUserDBs) {
 
     if($dbCertServer -eq $null) {
         $dbCertServer = $env:COMPUTERNAME    
@@ -966,7 +878,7 @@ function Install-SqlTDECertificate ([parameter (Mandatory=$True)][string]$dbCert
 
     #use sql service account for remote login
     $svcCred = [System.Management.Automation.PSCredential]::new("NFCU\SQLserverSVC",(ConvertTo-SecureString (Get-SqlPlainPassword -pwdFile SQLserverSVC) -AsPlainText -Force))
-    $securePwdShackle = ConvertTo-SecureString -String (Get-SqlPlainPassword -pwdFile shacklePROD) -AsPlainText -Force
+    $securePwdShackle = ConvertTo-SecureString -String (Get-SqlPlainPassword -pwdFile $shackleEnv).Trim() -AsPlainText -Force
     $ShackleCred = New-Object System.Management.Automation.PSCredential ("Shackle", $securePwdShackle)
 
 
@@ -996,7 +908,7 @@ function Install-SqlTDECertificate ([parameter (Mandatory=$True)][string]$dbCert
     if($certFiles -eq $null) {
        Invoke-Command -ComputerName SWVDCLVSNDBDB01 -ScriptBlock {
           Invoke-Expression "& `"J:\Program Files (x86)\Microsoft\PVKConverter\PVKConverter.exe`" -i j:\software\SSLCert\$Using:dbCertServer\$Using:dbCertServer.nfcu.net -o J:\software\SSLCert\$Using:dbCertServer\$Using:dbCertServer -d $Using:certPlainPwd -e $Using:certPlainPwd" -Verbose
-       } -Verbose    
+       } -Credential $svcCred -Verbose    
     }
     $certFile = Get-ChildItem \\SWVDCLVSNDBDB01\j$\software\SSLCert\$dbCertServer\ | ? {$_.Name -match 'cer'} | ? {$_.Mode -match 'a'}
     $pvkFile = Get-ChildItem \\SWVDCLVSNDBDB01\j$\software\SSLCert\$dbCertServer\ | ? {$_.Name -match 'pvk'} | ? {$_.Mode -match 'a'}
@@ -1018,7 +930,7 @@ function Install-SqlTDECertificate ([parameter (Mandatory=$True)][string]$dbCert
         Get-ChildItem Cert:\LocalMachine\My | Select-Object -First 1             
     } -Credential $svcCred
 
-    #Step: Check if SQL certificate is already instaleld on the server.
+    #Step: Check if SQL certificate is already setup on windows registry.
     $oldSqlCert = Invoke-Command -ComputerName $dbCertServer -ScriptBlock { 
         get-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Microsoft SQL Server\*\MSSQLServer\SuperSocketNetLib" -Name "Certificate"  -Verbose
     } -Credential $svcCred
@@ -1045,44 +957,44 @@ function Install-SqlTDECertificate ([parameter (Mandatory=$True)][string]$dbCert
         }
 
         #Step: Check error log file
-        Get-SqlErrorLog  -ServerInstance $dbCertServer  -Since Midnight -Verbose  | ? {$_.Text -match 'encryption'}
+        Get-SqlErrorLog  -ServerInstance $dbCertServer  -Since Midnight -Credential $ShackleCred  | ? {$_.Text -match 'encryption'}
     }
 
     #######################################################
     #                 ENABLE TDE                          # 
     #######################################################    
-    New-SQLMasterKey -dbCertServer $dbCertServer -certPlainPwd $certPlainPwd
+    New-SQLMasterKey -dbCertServer $dbCertServer -certPlainPwd $certPlainPwd -shackleEnv $shackleEnv
     
     #Check if the server is part of an AVG group, if yes! then replicate the certificate (TDE only) on other replicas before encrypting any database.
-    Add-SQLTDECertificate -dbCertServer $dbCertServer -decryPwd $certPlainPwd
+    Add-SQLTDECertificate -dbCertServer $dbCertServer -decryPwd $certPlainPwd -shackleEnv $shackleEnv
 
-    $otherReplica = Get-SQLAvgInfo -dbServer $dbCertServer | ? {$_.Replicas -notmatch $dbCertServer} | Select-Object -Property Replicas
+    $otherReplica = Get-SQLAvgInfo -dbServer $dbCertServer -shackleEnv $shackleEnv | ? {$_.Replicas -notmatch $dbCertServer} | Select-Object -Property Replicas
     if($otherReplica -ne $null) {
         #import TDE certificate on the other replica node
         $otherReplica | % {        
-            New-SQLMasterKey -dbCertServer ($_.Replicas) -certPlainPwd $certPlainPwd
-            Add-SQLTDECertificateOnReplica -dbCertServer ($_.Replicas) -dbReplicaServer $dbCertServer -decryPwd $certPlainPwd  
+            New-SQLMasterKey -dbCertServer ($_.Replicas) -certPlainPwd $certPlainPwd -shackleEnv $shackleEnv
+            Add-SQLTDECertificateOnReplica -dbCertServer ($_.Replicas) -dbReplicaServer $dbCertServer -decryPwd $certPlainPwd  -shackleEnv $shackleEnv
             #Add-SQLTDECertificate -dbCertServer ($_.Replicas) -decryPwd $certPlainPwd
         }
     }
     
     #get list of user databases
     if($encryptUserDBs) {
-        Enable-TDEOnUserDatabases -dbCertServer $dbCertServer
+        Enable-TDEOnUserDatabases -dbCertServer $dbCertServer -shackleEnv $shackleEnv
     }
 
 }
 
-function Enable-TDEOnUserDatabases ([Parameter(Mandatory=$True)][string]$dbCertServer, [string[]]$userDBList) {
+function Enable-TDEOnUserDatabases ([Parameter(Mandatory=$True)][string]$dbCertServer, [string[]]$userDBList, [Parameter(Mandatory=$True)][ValidateSet("shacklePROD","shackleDEV")][string]$shackleEnv) {
     
     if($userDBList -eq $null) {
         #get list of user databases
         $query4 = "
             select * from sys.sysdatabases
-            where name not in ('master','tempdb','model','msdb')
+            where name not in ('master','tempdb','model','msdb','ssisdb')
         "
         Write-Verbose $query4 
-        $userDBList = (Invoke-Sqlcmd -ServerInstance $dbCertServer -Query $query4  -Verbose 4>&1 | Select-Object -Property name).name
+        $userDBList = (Invoke-Sqlcmd -ServerInstance $dbCertServer -Query $query4 -Username "shackle" -Password (Get-SqlPlainPassword -pwdFile $shackleEnv).Trim() -Verbose 4>&1 | Select-Object -Property name).name
     }
     #Step: Encrypt user database
     $userDBList | ?{$_ -notmatch 'ReportServer'} | % {
@@ -1098,21 +1010,21 @@ function Enable-TDEOnUserDatabases ([Parameter(Mandatory=$True)][string]$dbCertS
             GO
         "
         Write-Verbose $query5 
-        Invoke-Sqlcmd -ServerInstance $dbCertServer -Query $query5  -Verbose 4>&1 
+        Invoke-Sqlcmd -ServerInstance $dbCertServer -Query $query5 -Username "shackle" -Password (Get-SqlPlainPassword -pwdFile $shackleEnv).Trim() -Verbose 4>&1 
     }    
 }
 
-function New-SQLMasterKey ([parameter(Mandatory=$True)][string]$dbCertServer,[parameter(Mandatory=$True)][string]$certPlainPwd) {
+function New-SQLMasterKey ([parameter(Mandatory=$True)][string]$dbCertServer,[parameter(Mandatory=$True)][string]$certPlainPwd, [Parameter(Mandatory=$True)][ValidateSet("shacklePROD","shackleDEV")][string]$shackleEnv) {
     #Step: Create new Master key, if not already exist
-    $masterKey = (Invoke-Sqlcmd -ServerInstance $dbCertServer -Query "select * from sys.symmetric_keys"  | ? {$_.name -match 'DatabaseMaster'}|Select-Object -Property name).name
+    $masterKey = (Invoke-Sqlcmd -ServerInstance $dbCertServer -Query "select * from sys.symmetric_keys" -Username "shackle" -Password (Get-SqlPlainPassword -pwdFile $shackleEnv).Trim() | ? {$_.name -match 'DatabaseMaster'}|Select-Object -Property name).name
     if($masterKey -eq $null) {
         $query2 = "
             USE master
             CREATE MASTER KEY ENCRYPTION BY PASSWORD = '$certPlainPwd';
             GO
         "    
-        Invoke-Sqlcmd -ServerInstance $dbCertServer -Query $query2  -Verbose
-        $masterKey = Invoke-Sqlcmd -ServerInstance $dbCertServer -Query "select * from sys.symmetric_keys" | Select-Object -Property name
+        Invoke-Sqlcmd -ServerInstance $dbCertServer -Query $query2 -Username "shackle" -Password (Get-SqlPlainPassword -pwdFile $shackleEnv).Trim()  -Verbose
+        $masterKey = Invoke-Sqlcmd -ServerInstance $dbCertServer -Query "select * from sys.symmetric_keys" -Username "shackle" -Password (Get-SqlPlainPassword -pwdFile $shackleEnv).Trim() | Select-Object -Property name
         Write-Verbose "New masterKey: $($masterKey[0]) has been created on $dbCertServer"
     }
     else {
@@ -1121,7 +1033,7 @@ function New-SQLMasterKey ([parameter(Mandatory=$True)][string]$dbCertServer,[pa
             ALTER MASTER KEY REGENERATE WITH ENCRYPTION BY PASSWORD = '$($certPlainPwd)';  
             GO  
         "
-        Invoke-Sqlcmd -ServerInstance $dbCertServer -Query $query21 -Verbose
+        Invoke-Sqlcmd -ServerInstance $dbCertServer -Query $query21 -Username "shackle" -Password (Get-SqlPlainPassword -pwdFile $shackleEnv).Trim() -Verbose
         Write-Verbose "masterKey: $masterKey has been regenerated w/ new password on Server:$dbCertServer"
     }
 }
@@ -1278,8 +1190,8 @@ function Get-SQLServerTDEdbInfo([Parameter(Mandatory=$True)][string]$dbServer) {
         " -Verbose -ErrorAction Stop
     )
 }
-function Get-SQLServerTDEInfo([Parameter(Mandatory=$True)][string]$dbServer) {
-    $result = Invoke-Sqlcmd -ServerInstance $dbServer -Query "select * from sys.dm_database_encryption_keys" -Verbose
+function Get-SQLServerTDEInfo([Parameter(Mandatory=$True)][string]$dbServer, [Parameter(Mandatory=$True)][ValidateSet("shacklePROD","shackleDEV")][string]$shackleEnv) {
+    $result = Invoke-Sqlcmd -ServerInstance $dbServer -Query "select * from sys.dm_database_encryption_keys" -Username shackle -Password (Get-SqlPlainPassword -pwdFile $shackleEnv).Trim() -Verbose
     if($result) {
     $query = "
         select b.name,
@@ -1298,9 +1210,9 @@ function Get-SQLServerTDEInfo([Parameter(Mandatory=$True)][string]$dbServer) {
         b.database_id = a.database_id
         and c.thumbprint = a.encryptor_thumbprint
     "
-    Invoke-Sqlcmd -ServerInstance $dbServer -Query $query  -Verbose
+    Invoke-Sqlcmd -ServerInstance $dbServer -Query $query  -Verbose -Username shackle -Password (Get-SqlPlainPassword -pwdFile $shackleEnv).Trim()
     } else {
-        Invoke-Sqlcmd -ServerInstance $dbServer -Query "select * from sys.certificates where pvt_key_encryption_type = 'MK'" -Verbose
+        Invoke-Sqlcmd -ServerInstance $dbServer -Query "select * from sys.certificates where pvt_key_encryption_type = 'MK'" -Verbose -Username shackle -Password (Get-SqlPlainPassword -pwdFile $shackleEnv).Trim()
     }
 }
 
@@ -1862,6 +1774,15 @@ function Get-SqlServerEventLogInfo {
     }
 }
 
+Function Restart-SQLRdpServices {	
+  param([Parameter(Mandatory=$True)][string]$ComputerName = $env:computerName)
+  Get-Service -ComputerName $ComputerName -Name 'Remote Desktop Services UserMode Port Redirector' | Stop-Service -Force -Verbose
+  Get-Service -ComputerName $ComputerName -Name 'TermService' | Stop-Service -Force -Verbose
+  Get-Service -ComputerName $ComputerName -Name 'TermService' | Start-Service -Verbose
+  Get-Service -ComputerName $ComputerName -Name 'Remote Desktop Services UserMode Port Redirector' | Start-Service -Verbose
+} 
+
+
 Export-ModuleMember -Function 	Backup-RestoreSQLDatabase
 Export-ModuleMember -Function 	Backup-TSMSQLDatabase
 #Export-ModuleMember -Function 	Copy-SQLDatabase
@@ -1928,4 +1849,5 @@ Export-ModuleMember -Function  Get-SqlServerLastReboot
 Export-ModuleMember -Function  Get-SqlServerEventLogInfo
 Export-ModuleMember -Function  Get-SQLReplicaInfo
 Export-ModuleMember -Function  Get-SQLBackupHistory
+Export-ModuleMember -Function  Restart-SQLRdpServices
 
