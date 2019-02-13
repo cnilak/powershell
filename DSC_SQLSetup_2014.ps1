@@ -1,4 +1,6 @@
-﻿$dbaCred = get-credential
+﻿#testing code in github
+
+$dbaCred = get-credential
 $nodList = @('SWPDCRVAMGDB02','SWWDCRVAMGDB02','SWSDHRVAMGDB02')
 
 $nodList | % {
